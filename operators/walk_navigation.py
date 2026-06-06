@@ -4,6 +4,24 @@ from bpy.types import Operator
 from ..core.workspace_check import is_level_design_workspace
 
 
+# ---------------------------------------------------------------------------
+# Grid presets — edit these values to your liking.
+# Keys 1-9 on the keyboard set the grid to the corresponding size.
+# Values are in whatever unit the scene is set to (meters by default).
+# ---------------------------------------------------------------------------
+GRID_PRESETS = {
+    'ONE':   16.0,   # 1 → 1/16
+    'TWO':   12.0,    # 2 → 1/8
+    'THREE': 8.0,     # 3 → 1/4
+    'FOUR':  4.0,      # 4 → 1/2
+    'FIVE':  2.0,      # 5 → 1
+    'SIX':   1.0,      # 6 → 2
+    'SEVEN': 0.5,      # 7 → 4
+    'EIGHT': 0.25,      # 8 → 8
+    'NINE':  0.125,     # 9 → 16
+}
+
+
 # HACK: We manage CONFIRM keymap items in Blender's "View3D Walk Modal" keymap
 # (user keyconfig). During our walk wrapper modal, we enable them (and disable
 # conflicting items for the trigger key), then disable them on exit.
@@ -131,6 +149,17 @@ class LEVELDESIGN_OT_walk_navigation_hold(Operator):
         if event.type == self._trigger_key and event.value == 'RELEASE':
             self._done = True
             return {'PASS_THROUGH'}
+
+        # Grid preset switching: intercept number keys while RMB is held.
+        # Walk navigation does not use number keys so there is no conflict.
+        if event.value == 'PRESS' and event.type in GRID_PRESETS:
+            preset_scale = GRID_PRESETS[event.type]
+            props = context.scene.level_design_props
+            props.anvil_grid_scale = preset_scale
+            from .grid_tools import apply_anvil_grid_scale
+            us = context.scene.unit_settings
+            apply_anvil_grid_scale(preset_scale, us.system, us.length_unit)
+            return {'RUNNING_MODAL'}
 
         return {'PASS_THROUGH'}
 
